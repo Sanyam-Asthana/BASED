@@ -1,0 +1,90 @@
+#include <stdio.h>
+#include <stdint.h>
+#include <string.h>
+
+#define TRUE 1
+#define FALSE 0
+#define MAX_CMD_SIZE 64
+#define MAX_ARGS
+
+typedef enum {
+	CMD_OK = 0,
+	CMD_ERR = 1,
+	CMD_EXIT = 2,
+} cmd_status_t;
+
+uint8_t echo(char** argv, uint8_t argc) {
+	for(uint8_t i = 1; i < argc; i++) {
+		fputs(argv[i], stdout);
+
+		if(i < argc - 1) {
+			fputs(" ", stdout);
+		}
+	}
+	putchar('\n');
+	return CMD_OK;
+}
+
+uint8_t execute_cmd(char* cmd_buf) {
+	
+	if(cmd_buf[0] == '\0') {
+		return CMD_OK;
+	}
+
+	char* argv[8];
+	uint8_t argc = 0;
+
+	char *token = strtok(cmd_buf, " ");
+	while(token != NULL && argc < 8) {
+		argv[argc++] = token;
+		token = strtok(NULL, " ");
+	}
+
+	if(strcmp(argv[0], "echo") == 0) {
+		return echo(argv, argc);
+	}
+
+	else if (strcmp(argv[0], "exit") == 0) {
+		return CMD_EXIT;
+	}
+	
+	else {
+		fputs(argv[0], stderr);
+		fputs(": command not recognized!\n", stderr);
+		return CMD_ERR;
+	}
+}
+
+int main() {
+
+	char cmd_buf[MAX_CMD_SIZE];
+	
+	puts("BASED V0.1\nSanyam Asthana, 2026");
+	puts("Basic Automated Shell for Embedded Devices\n");
+
+	while(TRUE) {
+		fputs("based-0.1$ ", stdout);
+		fflush(stdout);
+
+		uint8_t buf_pos = 0;
+		while(TRUE) {
+			int next_char = getchar();
+
+			if(next_char == '\n' || next_char == '\r') {
+				break;
+			}
+			
+			if(buf_pos < MAX_CMD_SIZE - 1) {
+				cmd_buf[buf_pos++] = next_char;
+			}
+		}
+
+		cmd_buf[buf_pos] = '\0';
+		cmd_status_t status = execute_cmd(cmd_buf);
+
+		if(status == CMD_EXIT) {
+			return 0;
+		}
+	}
+	return 0;
+}
