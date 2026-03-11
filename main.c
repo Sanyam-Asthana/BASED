@@ -5,7 +5,6 @@
 #define TRUE 1
 #define FALSE 0
 #define MAX_CMD_SIZE 64
-#define MAX_ARGS
 
 typedef enum {
 	CMD_OK = 0,
@@ -13,7 +12,14 @@ typedef enum {
 	CMD_EXIT = 2,
 } cmd_status_t;
 
-uint8_t echo(char** argv, uint8_t argc) {
+typedef uint8_t (*cmd_fn)(char** argv, uint8_t argc);
+
+typedef struct {
+	const char* name;
+	cmd_fn handler;
+} command_t;
+
+uint8_t cmd_echo(char** argv, uint8_t argc) {
 	for(uint8_t i = 1; i < argc; i++) {
 		fputs(argv[i], stdout);
 
@@ -24,6 +30,28 @@ uint8_t echo(char** argv, uint8_t argc) {
 	putchar('\n');
 	return CMD_OK;
 }
+
+uint8_t cmd_help(char** argv, uint8_t argc) {
+	puts("commands: echo, help, exit");
+	return CMD_OK;
+}
+
+uint8_t cmd_exit(char** argv, uint8_t argc) {
+	return CMD_EXIT;
+}
+
+uint8_t cmd_clear(char** argv, uint8_t argc) {
+	fputs("\033[2J\033[H", stdout); 
+	return CMD_OK;
+}
+
+static const command_t cmd_table[] = {
+	{ "echo", cmd_echo },
+	{ "help", cmd_help },
+	{ "exit", cmd_exit },
+	{ "clear", cmd_clear },
+	{ NULL, NULL },
+};
 
 uint8_t execute_cmd(char* cmd_buf) {
 	
@@ -39,20 +67,17 @@ uint8_t execute_cmd(char* cmd_buf) {
 		argv[argc++] = token;
 		token = strtok(NULL, " ");
 	}
-
-	if(strcmp(argv[0], "echo") == 0) {
-		return echo(argv, argc);
-	}
-
-	else if (strcmp(argv[0], "exit") == 0) {
-		return CMD_EXIT;
-	}
 	
-	else {
-		fputs(argv[0], stderr);
-		fputs(": command not recognized!\n", stderr);
-		return CMD_ERR;
+	for(int i = 0; cmd_table[i].name != NULL; i++) {
+		if(strcmp(cmd_table[i].name, argv[0]) == 0) {
+			cmd_status_t status = cmd_table[i].handler(argv, argc);
+			return status;
+		}
 	}
+
+	fputs(argv[0], stdout);
+	puts(": unrecognized command!");
+	return CMD_ERR;
 }
 
 int main() {
