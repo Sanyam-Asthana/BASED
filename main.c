@@ -3,6 +3,7 @@
 #include <string.h>
 #include <dirent.h>
 #include <unistd.h>
+#include <termios.h>
 
 #define TRUE 1
 #define FALSE 0
@@ -95,7 +96,7 @@ uint8_t cmd_cat(char** argv, uint8_t argc) {
 
 uint8_t cmd_cd(char** argv, uint8_t argc) {
 	if(argc < 2) {
-		fputs("usage: cd <path>", stderr);
+		fputs("usage: cd <path>\n", stderr);
 		return CMD_ERR;
 	}
 
@@ -103,10 +104,58 @@ uint8_t cmd_cd(char** argv, uint8_t argc) {
 
 	if(chdir(path) != 0) {
 		fputs(path, stderr);
-		fputs(": path does not exist!", stderr);
+		fputs(": path does not exist!\n", stderr);
 		return CMD_ERR;
 	}
 
+	return CMD_OK;
+}
+
+uint8_t cmd_base(char** argv, uint8_t argc) {
+	if(argc < 2) {
+		fputs("usage: base <filename>\n", stderr);
+		return CMD_ERR;
+	}
+
+	const char* path = argv[1];
+	FILE* file = fopen(path, "a");
+	
+	if(file == NULL) {
+		fputs(path, stderr);
+		fputs(": unable to open file!\n", stderr);
+		return CMD_ERR;
+	}
+
+    	struct termios old, raw;
+    	tcgetattr(STDIN_FILENO, &old);
+    	raw = old;
+    	raw.c_lflag &= ~(ICANON | ECHO);
+    	tcsetattr(STDIN_FILENO, TCSAFLUSH, &raw);
+
+	char buffer[128];
+	
+	uint8_t buf_size = 0;
+	int curr_char;
+
+	while(TRUE) {
+		curr_char = getchar();
+
+		if(curr_char == 4) {
+			break;
+		}
+
+		buffer[buf_size++] = curr_char;
+
+		if(curr_char == '\n' || curr_char == '\n') {
+			fwrite(buffer, sizeof(char), buf_size, file);
+			buf_size = 0;
+		}
+	}
+
+	tcsetattr(STDIN_FILENO, TCSAFLUSH, &old);
+	fputs("file saved: ", stdout);
+	fputs(path, stdout);
+	fclose(file);
 	return CMD_OK;
 }
 
@@ -118,6 +167,7 @@ static const command_t cmd_table[] = {
 	{ "ls", cmd_ls },
 	{ "cat", cmd_cat },
 	{ "cd", cmd_cd },
+	{ "base", cmd_base },
 	{ NULL, NULL },
 };
 
