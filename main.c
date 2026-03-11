@@ -2,10 +2,14 @@
 #include <stdint.h>
 #include <string.h>
 #include <dirent.h>
+#include <unistd.h>
 
 #define TRUE 1
 #define FALSE 0
 #define MAX_CMD_SIZE 64
+
+#define GREEN "\e[1;32m"
+#define RESET "\e[0m"
 
 typedef enum {
 	CMD_OK = 0,
@@ -33,7 +37,7 @@ uint8_t cmd_echo(char** argv, uint8_t argc) {
 }
 
 uint8_t cmd_help(char** argv, uint8_t argc) {
-	puts("commands: echo, help, exit, clear, ls, cat");
+	puts("commands: echo, help, exit, clear, ls, cat, cd");
 	return CMD_OK;
 }
 
@@ -89,6 +93,23 @@ uint8_t cmd_cat(char** argv, uint8_t argc) {
 	return CMD_OK;
 }
 
+uint8_t cmd_cd(char** argv, uint8_t argc) {
+	if(argc < 2) {
+		fputs("usage: cd <path>", stderr);
+		return CMD_ERR;
+	}
+
+	const char* path = argv[1];
+
+	if(chdir(path) != 0) {
+		fputs(path, stderr);
+		fputs(": path does not exist!", stderr);
+		return CMD_ERR;
+	}
+
+	return CMD_OK;
+}
+
 static const command_t cmd_table[] = {
 	{ "echo", cmd_echo },
 	{ "help", cmd_help },
@@ -96,6 +117,7 @@ static const command_t cmd_table[] = {
 	{ "clear", cmd_clear },
 	{ "ls", cmd_ls },
 	{ "cat", cmd_cat },
+	{ "cd", cmd_cd },
 	{ NULL, NULL },
 };
 
@@ -133,8 +155,16 @@ int main() {
 	puts("BASED V0.1\nSanyam Asthana, 2026");
 	puts("Basic Automated Shell for Embedded Devices\n");
 
+	char cwd[128];
+
 	while(TRUE) {
-		fputs("based-0.1$ ", stdout);
+		
+		getcwd(cwd, sizeof(cwd));
+		fputs(GREEN, stdout);
+		fputs(cwd, stdout);
+		fputs(RESET, stdout);
+			
+		fputs(" based-0.1$ ", stdout);
 		fflush(stdout);
 
 		uint8_t buf_pos = 0;
