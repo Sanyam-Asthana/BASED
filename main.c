@@ -4,10 +4,12 @@
 #include <dirent.h>
 #include <unistd.h>
 #include <termios.h>
+#include "planck.h"
 
 #define TRUE 1
 #define FALSE 0
 #define MAX_CMD_SIZE 128
+#define MAX_CMD_LEN 64
 
 #define GREEN "\e[1;32m"
 #define RESET "\e[0m"
@@ -160,6 +162,7 @@ uint8_t cmd_base(char** argv, uint8_t argc) {
 			fwrite(buffer, sizeof(char), buf_size, file);
 			buf_size = 0;
 			fputs("\r\n>", stdout);
+			fflush(stdout);
 		}
 
 		else {
@@ -177,6 +180,30 @@ uint8_t cmd_base(char** argv, uint8_t argc) {
 	return CMD_OK;
 }
 
+uint8_t cmd_planck(char** argv, uint8_t argc) {
+	if(argc < 2) {
+                fputs("usage: planck <filename>", stderr);
+		return CMD_ERR;
+        }
+
+        const char* path = argv[1];
+
+        FILE* file = fopen(path, "r");
+
+        if(file == NULL) {
+                fputs(path, stderr);
+                fputs(": file does not exist!", stderr);
+                return 1;
+        }
+
+        char line[MAX_CMD_LEN];
+        while((fgets(line, sizeof(line), file)) != NULL) {
+                line[strcspn(line, "\n")] = '\0';
+                execute_line(line);
+        }
+	return CMD_OK;
+}
+
 static const command_t cmd_table[] = {
 	{ "echo", cmd_echo },
 	{ "help", cmd_help },
@@ -186,6 +213,7 @@ static const command_t cmd_table[] = {
 	{ "cat", cmd_cat },
 	{ "cd", cmd_cd },
 	{ "base", cmd_base },
+	{ "planck", cmd_planck },
 	{ NULL, NULL },
 };
 
