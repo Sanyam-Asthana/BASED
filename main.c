@@ -7,7 +7,7 @@
 
 #define TRUE 1
 #define FALSE 0
-#define MAX_CMD_SIZE 64
+#define MAX_CMD_SIZE 128
 
 #define GREEN "\e[1;32m"
 #define RESET "\e[0m"
@@ -38,7 +38,7 @@ uint8_t cmd_echo(char** argv, uint8_t argc) {
 }
 
 uint8_t cmd_help(char** argv, uint8_t argc) {
-	puts("commands: echo, help, exit, clear, ls, cat, cd");
+	puts("commands: echo, help, exit, clear, ls, cat, cd, base");
 	return CMD_OK;
 }
 
@@ -132,11 +132,12 @@ uint8_t cmd_base(char** argv, uint8_t argc) {
     	raw.c_lflag &= ~(ICANON | ECHO);
     	tcsetattr(STDIN_FILENO, TCSAFLUSH, &raw);
 
-	char buffer[128];
+	char buffer[MAX_CMD_SIZE];
 	
 	uint8_t buf_size = 0;
 	int curr_char;
-
+	
+	fputs("\r\n>", stdout);
 	while(TRUE) {
 		curr_char = getchar();
 
@@ -144,17 +145,34 @@ uint8_t cmd_base(char** argv, uint8_t argc) {
 			break;
 		}
 
-		buffer[buf_size++] = curr_char;
+		else if(curr_char == 127 || curr_char == '\b') {
+			if(buf_size > 0) {
+				buf_size--;
+				fputs("\b \b", stdout);
+				fflush(stdout);
+			}
+		}
 
-		if(curr_char == '\n' || curr_char == '\n') {
+		else if(curr_char == '\n' || curr_char == '\r') {
+			if(buf_size < MAX_CMD_SIZE - 1) {
+				buffer[buf_size++] = '\n';
+			}
 			fwrite(buffer, sizeof(char), buf_size, file);
 			buf_size = 0;
+			fputs("\r\n>", stdout);
 		}
+
+		else {
+			buffer[buf_size++] = curr_char;
+			fputc(curr_char, stdout);
+			fflush(stdout);
+		}
+
 	}
 
 	tcsetattr(STDIN_FILENO, TCSAFLUSH, &old);
 	fputs("file saved: ", stdout);
-	fputs(path, stdout);
+	puts(path);
 	fclose(file);
 	return CMD_OK;
 }
