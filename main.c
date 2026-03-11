@@ -1,6 +1,7 @@
 #include <stdio.h>
 #include <stdint.h>
 #include <string.h>
+#include <dirent.h>
 
 #define TRUE 1
 #define FALSE 0
@@ -32,7 +33,7 @@ uint8_t cmd_echo(char** argv, uint8_t argc) {
 }
 
 uint8_t cmd_help(char** argv, uint8_t argc) {
-	puts("commands: echo, help, exit");
+	puts("commands: echo, help, exit, clear, ls, cat");
 	return CMD_OK;
 }
 
@@ -45,11 +46,56 @@ uint8_t cmd_clear(char** argv, uint8_t argc) {
 	return CMD_OK;
 }
 
+uint8_t cmd_ls(char** argv, uint8_t argc) {
+	const char* path = (argc > 1) ? argv[1] : ".";
+
+	DIR *dir = opendir(path);
+	if(dir == NULL) {
+		fputs(path, stderr);
+		fputs(": directory does not exist!\n", stderr);
+		return CMD_ERR;
+	}
+
+	struct dirent *entry;
+	while((entry = readdir(dir)) != NULL) {
+		puts(entry->d_name);
+	}
+	
+	closedir(dir);
+	return CMD_OK;
+}
+
+uint8_t cmd_cat(char** argv, uint8_t argc) {
+	if(argc < 2) {
+		fputs("usage: cat <filename>\n", stderr);
+		return CMD_ERR;
+	}
+	
+	const char* path = argv[1];
+
+	FILE* file = fopen(path, "r");
+	if(file == NULL) {
+		fputs(path, stderr);
+		fputs(": file does not exist!\n", stderr);
+		return CMD_ERR;
+	}
+	
+	int current_char;
+	while((current_char = getc(file)) != EOF) {
+		fputc(current_char, stdout);
+	}
+
+	fclose(file);
+	return CMD_OK;
+}
+
 static const command_t cmd_table[] = {
 	{ "echo", cmd_echo },
 	{ "help", cmd_help },
 	{ "exit", cmd_exit },
 	{ "clear", cmd_clear },
+	{ "ls", cmd_ls },
+	{ "cat", cmd_cat },
 	{ NULL, NULL },
 };
 
